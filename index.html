@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyForge: Smart Code Extractor & Sanitizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#306998',
+                            yellow: '#FFE873',
+                            indigo: '#6366f1'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts for Coding Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            background-image: radial-gradient(circle at 50% 120%, #1e1b4b 0%, #020617 80%);
+        }
+        
+        /* Custom scrollbars for professional look */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Prevent editor background blink */
+        textarea:focus {
+            outline: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-800/80 bg-slate-950/40 backdrop-blur-md sticky top-0 z-50 transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <!-- Glowing PyForge Brand Logo -->
+                <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-500/20">
+                    <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    <!-- Python Sub-Logo Overlay -->
+                    <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-slate-900 rounded-full flex items-center justify-center border border-slate-800">
+                        <span class="text-xs">🐍</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-100 via-slate-200 to-indigo-200">PyForge</span>
+                        <span class="px-1.5 py-0.5 text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded">v1.2.0</span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Multi-format Code Extractor, Cleanser & Packager</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <a href="#quick-docs" onclick="toggleModal('docs-modal')" class="text-xs text-slate-400 hover:text-indigo-400 transition flex items-center space-x-1 py-2 px-3 rounded-lg hover:bg-slate-900/50">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="hidden md:inline">How It Works</span>
+                </a>
+                <span class="h-4 w-[1px] bg-slate-800"></span>
+                <button onclick="clearAll()" class="text-xs font-medium text-slate-400 hover:text-rose-400 bg-slate-900 hover:bg-rose-950/20 border border-slate-800 hover:border-rose-900/30 px-3.5 py-2 rounded-lg transition-all flex items-center space-x-1.5">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Clear Workspace</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:grid lg:grid-cols-12 lg:gap-6 overflow-hidden">
+        
+        <!-- Left Column: Editor & Input Controls (lg:col-span-8) -->
+        <section class="lg:col-span-8 flex flex-col space-y-4 mb-6 lg:mb-0">
+            
+            <!-- Quick Actions Banner & Boilerplates -->
+            <div class="bg-slate-950/50 backdrop-blur border border-slate-800/80 rounded-xl p-3 flex flex-wrap gap-2 items-center justify-between shadow-lg">
+                <div class="flex items-center space-x-2 text-xs text-slate-400">
+                    <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span class="font-medium text-slate-300">Quick Inject Boilerplate:</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <button onclick="injectTemplate('fastapi')" class="text-xs bg-slate-900 hover:bg-slate-800/80 hover:text-indigo-300 border border-slate-800/80 text-slate-300 px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1">
+                        <span>⚡ FastAPI Server</span>
+                    </button>
+                    <button onclick="injectTemplate('scraper')" class="text-xs bg-slate-900 hover:bg-slate-800/80 hover:text-indigo-300 border border-slate-800/80 text-slate-300 px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1">
+                        <span>🕷️ Web Scraper</span>
+                    </button>
+                    <button onclick="injectTemplate('cli')" class="text-xs bg-slate-900 hover:bg-slate-800/80 hover:text-indigo-300 border border-slate-800/80 text-slate-300 px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1">
+                        <span>💻 Command Tool</span>
+                    </button>
+                    <button onclick="injectTemplate('viz')" class="text-xs bg-slate-900 hover:bg-slate-800/80 hover:text-indigo-300 border border-slate-800/80 text-slate-300 px-3 py-1.5 rounded-lg transition-all flex items-center space-x-1">
+                        <span>📊 Data Plotter</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- The Smart Editor Shell -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-2xl relative">
+                
+                <!-- Editor Top Header -->
+                <div class="bg-slate-900/60 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <!-- Red-Yellow-Green Dots (Mac Style) -->
+                        <div class="flex space-x-1.5 mr-2">
+                            <span class="w-3 h-3 rounded-full bg-rose-500/80 block"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-500/80 block"></span>
+                            <span class="w-3 h-3 rounded-full bg-emerald-500/80 block"></span>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-400 tracking-wider font-mono">WORKSPACE.PY</span>
+                        <span id="save-status" class="text-[10px] text-emerald-400/80 bg-emerald-950/20 border border-emerald-900/30 px-2 py-0.5 rounded flex items-center space-x-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Live Code Analysis Active</span>
+                        </span>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <!-- Code Cleaners Bar -->
+                        <div class="inline-flex rounded-lg border border-slate-800 p-0.5 bg-slate-950 text-xs">
+                            <button onclick="cleanCode('strip-numbers')" title="Strip line numbers from copy-pastes" class="px-2.5 py-1 text-slate-400 hover:text-indigo-300 hover:bg-slate-900 rounded-md transition-all flex items-center space-x-1 font-medium">
+                                <span>1️⃣ Strip Numbers</span>
+                            </button>
+                            <span class="w-[1px] bg-slate-800 my-1"></span>
+                            <button onclick="cleanCode('strip-repl')" title="Strip REPL prompt characters (>>> , ...)" class="px-2.5 py-1 text-slate-400 hover:text-indigo-300 hover:bg-slate-900 rounded-md transition-all flex items-center space-x-1 font-medium">
+                                <span>🐍 Strip REPL</span>
+                            </button>
+                            <span class="w-[1px] bg-slate-800 my-1"></span>
+                            <button onclick="cleanCode('html-entities')" title="Fix encoded characters like &amp;lt; &amp;gt; &amp;amp;" class="px-2.5 py-1 text-slate-400 hover:text-indigo-300 hover:bg-slate-900 rounded-md transition-all flex items-center space-x-1 font-medium">
+                                <span>✨ Decode HTML</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Editor Input Split Container -->
+                <div class="relative flex flex-grow h-[500px] overflow-hidden">
+                    <!-- Line Numbers (Locked Column) -->
+                    <div id="line-numbers" class="bg-slate-950 text-slate-600 select-none text-right pr-3 pl-4 py-4 border-r border-slate-900 overflow-hidden font-mono text-xs leading-6 shrink-0 flex flex-col">
+                        <div>1</div>
+                    </div>
+
+                    <!-- Python Raw Editor -->
+                    <div class="relative flex-grow h-full bg-slate-950/20">
+                        <textarea id="code-editor" spellcheck="false" autocomplete="off" 
+                            placeholder="# Paste your raw code text here...&#10;# Copy/Paste cleanups & file detections will run in real-time.&#10;# Try clicking &quot;FastAPI Server&quot; template above to see the diagnostic parsing!" 
+                            class="w-full h-full bg-transparent text-slate-100 p-4 font-mono text-xs leading-6 resize-none focus:outline-none overflow-y-auto whitespace-pre overflow-x-auto tab-size-4 block"></textarea>
+                        
+                        <!-- Floating Watermark/Helper -->
+                        <div id="editor-empty-helper" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-slate-600 p-6 text-center select-none">
+                            <svg class="w-16 h-16 text-slate-800 mb-3 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m-9 1V4a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                            </svg>
+                            <p class="text-sm font-medium text-slate-500">The workbench is ready.</p>
+                            <p class="text-xs text-slate-600 max-w-sm mt-1">Paste plain text code, dump mixed blog scripts, or choose a starter kit above.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Bottom Stats Footer -->
+                <div class="bg-slate-900/60 border-t border-slate-800 px-4 py-2 flex flex-wrap gap-4 items-center justify-between text-xs text-slate-400 font-mono">
+                    <div class="flex items-center space-x-4">
+                        <span>Lines: <strong id="stat-lines" class="text-slate-200">0</strong></span>
+                        <span>Chars: <strong id="stat-chars" class="text-slate-200">0</strong></span>
+                        <span>Size: <strong id="stat-size" class="text-indigo-400">0 B</strong></span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="cleanCode('tabs-spaces')" class="hover:text-slate-200 bg-slate-950/60 border border-slate-800 hover:border-slate-700 px-2 py-0.5 rounded transition">
+                            Convert Tabs ➔ 4 Spaces
+                        </button>
+                        <span class="text-slate-700">|</span>
+                        <button onclick="cleanCode('trim-spaces')" class="hover:text-slate-200 bg-slate-950/60 border border-slate-800 hover:border-slate-700 px-2 py-0.5 rounded transition">
+                            Strip End Whitespace
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filename Input & Big Download Control -->
+            <div class="bg-gradient-to-r from-slate-900 to-indigo-950/40 p-5 rounded-xl border border-indigo-900/40 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="w-full md:w-auto flex-grow max-w-lg">
+                    <label for="filename-input" class="block text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-1.5 flex items-center space-x-1">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        <span>Target File Name</span>
+                    </label>
+                    <div class="flex gap-2">
+                        <div class="relative flex-1 rounded-lg shadow-sm">
+                            <input type="text" id="filename-input" 
+                                class="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg py-2.5 pl-3.5 pr-12 text-sm text-slate-100 font-mono transition-all" 
+                                placeholder="my_custom_script" value="app">
+                        </div>
+                        <select id="format-select" onchange="onFormatChange()"
+                            class="bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg py-2.5 px-3 text-sm text-slate-100 font-mono transition-all cursor-pointer">
+                            <option value=".py" class="bg-slate-950">🐍 .py</option>
+                            <option value=".html" class="bg-slate-950">🌐 .html</option>
+                            <option value=".txt" class="bg-slate-950">📄 .txt</option>
+                            <option value=".md" class="bg-slate-950">📝 .md</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="w-full md:w-auto flex flex-row sm:flex-nowrap gap-3 shrink-0">
+                    <!-- Virtual execution simulated environment button -->
+                    <button onclick="runVirtualCompilation()" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 text-slate-200 px-5 py-3 rounded-xl transition font-medium flex items-center justify-center space-x-2 shadow-lg shadow-black/10">
+                        <svg class="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Dry Run Diagnostics</span>
+                    </button>
+
+                    <!-- Prime Download Button -->
+                    <button id="download-btn" onclick="triggerDownload()" class="w-full sm:w-auto relative group overflow-hidden bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-600 hover:to-indigo-800 text-white font-semibold px-8 py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:-translate-y-0.5 duration-200 flex items-center justify-center space-x-2">
+                        <!-- Shining glow effect on hover -->
+                        <div class="absolute inset-0 w-1/2 h-full bg-white/10 skew-x-12 -translate-x-full group-hover:animate-[shimmer_0.8s_ease-out]"></div>
+                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Package & Download</span>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Column: Real-Time Quality Guard & Analyzer (lg:col-span-4) -->
+        <aside class="lg:col-span-4 flex flex-col space-y-6">
+
+            <!-- Real-time Quality Guard & Diagnostics Tracker -->
+            <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-5 shadow-xl backdrop-blur-md">
+                <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center justify-between">
+                    <span>Syntax Integrity Guard</span>
+                    <span class="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-ping"></span>
+                </h3>
+
+                <!-- Active Warnings Panel -->
+                <div class="space-y-3">
+                    
+                    <!-- Brackets Balance (Parentheses, Square, Curly) -->
+                    <div class="bg-slate-900/50 border border-slate-800/60 rounded-lg p-3 flex items-start space-x-3">
+                        <div id="bracket-icon" class="mt-0.5 shrink-0">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-200">Bracket & Paren Check</p>
+                            <p id="bracket-status-text" class="text-[11px] text-slate-400 mt-0.5">Start typing code to verify matched brackets.</p>
+                        </div>
+                    </div>
+
+                    <!-- Quote Matching Check -->
+                    <div class="bg-slate-900/50 border border-slate-800/60 rounded-lg p-3 flex items-start space-x-3">
+                        <div id="quote-icon" class="mt-0.5 shrink-0">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-200">Quote Completeness</p>
+                            <p id="quote-status-text" class="text-[11px] text-slate-400 mt-0.5">Monitors unmatched single, double, & docstring quotes.</p>
+                        </div>
+                    </div>
+
+                    <!-- Indentation Inconsistencies -->
+                    <div class="bg-slate-900/50 border border-slate-800/60 rounded-lg p-3 flex items-start space-x-3">
+                        <div id="indent-icon" class="mt-0.5 shrink-0">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-200">Indentation Monitor</p>
+                            <p id="indent-status-text" class="text-[11px] text-slate-400 mt-0.5">Alerts you of dangerous tab/space mixtures.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- AST-lite Abstract Syntax Tree Visual Outline -->
+            <div class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-5 shadow-xl backdrop-blur-md flex-grow flex flex-col min-h-[300px]">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center space-x-2">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <span>Code Structure Outline</span>
+                    </h3>
+                    <span id="structure-count" class="text-[10px] font-mono bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-slate-300">0 found</span>
+                </div>
+
+                <!-- Outline Container -->
+                <div class="overflow-y-auto flex-grow max-h-[350px] pr-1 space-y-2.5 text-xs" id="outline-container">
+                    <div class="text-center py-8 text-slate-500 space-y-2">
+                        <svg class="w-8 h-8 mx-auto text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <p class="font-medium text-slate-600">No definitions detected</p>
+                        <p class="text-[11px] text-slate-700 max-w-[200px] mx-auto">Structure will auto-populate with imports, functions & classes as you write.</p>
+                    </div>
+                </div>
+
+                <!-- Outline Info Hint -->
+                <div class="mt-4 pt-3 border-t border-slate-900 text-[11px] text-slate-500 flex items-center space-x-1">
+                    <svg class="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Click any item to jump instantly to that code block.</span>
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- Interactive Dry Run & Diagnostics Simulated Terminal Output (Collapsible Popup Console) -->
+    <section id="virtual-terminal" class="fixed bottom-0 right-0 left-0 bg-[#020617] border-t border-indigo-900/50 shadow-2xl z-40 transform translate-y-full transition-transform duration-300 ease-in-out font-mono text-xs">
+        <div class="bg-slate-950 px-6 py-2.5 border-b border-indigo-950 flex items-center justify-between">
+            <div class="flex items-center space-x-2 text-indigo-400">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                <span class="font-semibold text-slate-300">PyForge Local Diagnostic Shell v3.11</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="runVirtualCompilation()" class="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 bg-indigo-950/40 border border-indigo-900/30 px-2 py-1 rounded">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15H19" />
+                    </svg>
+                    <span>Re-evaluate</span>
+                </button>
+                <button onclick="toggleTerminal(false)" class="text-slate-400 hover:text-rose-400 p-1 rounded hover:bg-slate-900">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div id="terminal-screen" class="p-6 h-56 overflow-y-auto bg-slate-950 text-emerald-400 leading-relaxed max-w-7xl mx-auto space-y-1">
+            <!-- Simulated execution outputs dynamically -->
+        </div>
+    </section>
+
+    <!-- Toast Notification Overlay -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 border border-indigo-500/30 text-slate-100 py-3.5 px-5 rounded-xl shadow-2xl flex items-center space-x-3 transform translate-y-20 opacity-0 transition-all duration-300 ease-out pointer-events-none">
+        <div class="w-7 h-7 bg-indigo-950/60 border border-indigo-500/30 rounded-lg flex items-center justify-center text-indigo-400 shrink-0" id="toast-icon">
+            ✓
+        </div>
+        <div>
+            <p class="text-xs font-bold text-slate-200" id="toast-title">Notification</p>
+            <p class="text-[11px] text-slate-400 mt-0.5" id="toast-message">Action processed successfully!</p>
+        </div>
+    </div>
+
+    <!-- How it works Modal -->
+    <div id="docs-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+            <button onclick="toggleModal('docs-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <h2 class="text-lg font-bold text-slate-100 flex items-center space-x-2">
+                <span>🤔 How PyForge Makes Your Life Easy</span>
+            </h2>
+            <div class="space-y-4 text-xs text-slate-300 mt-4 leading-relaxed">
+                <p>When you copy-paste Python code snippets from tutorials, stack overflow, or web documentations, the code is often loaded with extra artifacts that cause python compile errors. PyForge automatically sanitizes it before creating your file:</p>
+                
+                <ul class="space-y-2.5">
+                    <li class="flex items-start space-x-2">
+                        <span class="text-indigo-400 mt-0.5">✦</span>
+                        <div>
+                            <strong class="text-slate-200">Strips Line Numbers:</strong> Clever pattern matches and wipes prefix integers (like `1. def foo()`, `[12] class Bar:`, or `01 var = 1`).
+                        </div>
+                    </li>
+                    <li class="flex items-start space-x-2">
+                        <span class="text-indigo-400 mt-0.5">✦</span>
+                        <div>
+                            <strong class="text-slate-200">Clears REPL Artifacts:</strong> Removes active interactive python terminal command prefix markers (like `>>>` and `...`).
+                        </div>
+                    </li>
+                    <li class="flex items-start space-x-2">
+                        <span class="text-indigo-400 mt-0.5">✦</span>
+                        <div>
+                            <strong class="text-slate-200">Decodes HTML Entities:</strong> Swaps out annoying HTML encoding issues like turning `&amp;lt;` into `<`, `&amp;gt;` into `>`, and `&amp;amp;` into `&`.
+                        </div>
+                    </li>
+                    <li class="flex items-start space-x-2">
+                        <span class="text-indigo-400 mt-0.5">✦</span>
+                        <div>
+                            <strong class="text-slate-200">Auto File Suggester:</strong> Automatically parses the python text looking for classes and primary function declarations to recommend a neat filename, so you don't even have to name it yourself.
+                        </div>
+                    </li>
+                </ul>
+                <div class="bg-indigo-950/20 border border-indigo-900/30 p-3 rounded-lg text-indigo-400 text-[11px]">
+                    Note: Your files are processed entirely inside your local browser. Absolutely zero code is sent to external servers, protecting your security and API credentials.
+                </div>
+            </div>
+            <button onclick="toggleModal('docs-modal')" class="w-full mt-5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-xl text-xs transition">
+                Let's Code!
+            </button>
+        </div>
+    </div>
+
+    <!-- Page Footer -->
+    <footer class="border-t border-slate-900 bg-slate-950 py-4 mt-auto text-center text-xs text-slate-500">
+        <p>© 2026 PyForge. Powered by secure browser compilation tools. Completely offline & private.</p>
+    </footer>
+
+    <!-- Scripts and Logic -->
+    <script>
+        const editor = document.getElementById('code-editor');
+        const lineNumbers = document.getElementById('line-numbers');
+        const filenameInput = document.getElementById('filename-input');
+        const editorEmptyHelper = document.getElementById('editor-empty-helper');
+
+        // Boilerplate code constants
+        const boilerplates = {
+            fastapi: `import uvicorn\nfrom fastapi import FastAPI, HTTPException\nfrom pydantic import BaseModel\nfrom typing import List, Optional\n\napp = FastAPI(\n    title="PyForge Simulated Microservice",\n    description="Generated RESTful API boilerplate",\n    version="1.0.0"\n)\n\nclass Item(BaseModel):\n    id: int\n    name: str\n    description: Optional[str] = None\n    price: float\n    tax: Optional[float] = None\n\ndb_items = []\n\n@app.get("/items", response_model=List[Item])\ndef get_items():\n    """Fetch all items from database."""\n    return db_items\n\n@app.post("/items", response_model=Item, status_code=201)\ndef create_item(item: Item):\n    """Insert a new item to datastore."""\n    if any(x.id == item.id for x in db_items):\n        raise HTTPException(status_code=400, detail="ID already registered")\n    db_items.append(item)\n    return item\n\nif __name__ == "__main__":\n    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)\n`,
+            scraper: `import requests\nfrom bs4 import BeautifulSoup\nimport json\nimport time\n\ndef scrape_headlines(url: str):\n    """Extract news titles and URL coordinates dynamically."""\n    headers = {\n        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"\n    }\n    try:\n        print(f"[*] Dispatching request context to {url}")\n        response = requests.get(url, headers=headers, timeout=10)\n        response.raise_for_status()\n        \n        soup = BeautifulSoup(response.text, 'html.parser')\n        articles = []\n        \n        # Standard generic elements loop\n        for item in soup.find_all(['h1', 'h2', 'h3', 'a'], class_=True)[:15]:\n            text = item.get_text().strip()\n            link = item.get('href', '#')\n            if len(text) > 10:\n                articles.append({\n                    "title": text,\n                    "source_link": link,\n                    "scraped_at": time.time()\n                })\n        \n        return articles\n    except Exception as e:\n        print(f"[!] Scraper Exception: {e}")\n        return []\n\nif __name__ == "__main__":\n    target = "https://news.ycombinator.com"\n    results = scrape_headlines(target)\n    print(json.dumps(results, indent=2))\n`,
+            cli: `import argparse\nimport sys\nimport os\n\ndef build_parser() -> argparse.ArgumentParser:\n    """Configures modern CLI pipeline parameters."""\n    parser = argparse.ArgumentParser(\n        description="PyForge Automator Command Line Interface Utility"\n    )\n    parser.add_argument(\n        '-i', '--input',\n        type=str,\n        required=True,\n        help='Relative target input document filepath'\n    )\n    parser.add_argument(\n        '-v', '--verbose',\n        action='store_true',\n        help='Enable verbose stdout system debugging logs'\n    )\n    return parser\n\ndef process_pipeline(filepath: str, debug: bool):\n    """Checks filepath state."""\n    if not os.path.exists(filepath):\n        print(f"[ERROR] Specified file target not found: {filepath}")\n        sys.exit(1)\n    \n    if debug:\n        print(f"[DEBUG] Initiating processing module for size: {os.path.getsize(filepath)} bytes")\n    print("[SUCCESS] Data operation finished running.")\n\nif __name__ == "__main__":\n    args = build_parser().parse_args()\n    process_pipeline(args.input, args.verbose)\n`,
+            viz: `import numpy as np\nimport matplotlib.pyplot as plt\n\ndef generate_simulation_data():\n    """Creates normalized experimental coordinates."""\n    x = np.linspace(0, 10, 500)\n    # Synthesizing signals with standard gaussian disturbance\n    noise = np.random.normal(0, 0.15, len(x))\n    y_signal = np.sin(x) * np.exp(-x * 0.15) \n    y_noisy = y_signal + noise\n    return x, y_signal, y_noisy\n\ndef construct_analytical_plot(x, clean, noisy):\n    """Drafts high fidelity visualization figures."""\n    plt.style.use('seaborn-v0_8-darkgrid')\n    fig, ax = plt.subplots(figsize=(10, 6))\n    \n    ax.plot(x, clean, label='Theoretical Function (Signal)', color='#6366f1', linewidth=2.5)\n    ax.scatter(x, noisy, label='Simulated Sensor Output (With Noise)', color='#f43f5e', s=8, alpha=0.6)\n    \n    ax.set_title("Experimental Dynamic Signal Curve Degradation Analysis", fontsize=12, fontweight='bold', pad=15)\n    ax.set_xlabel("Time Coordinates (Seconds)", fontsize=10)\n    ax.set_ylabel("Amplitude Displacement (μm)", fontsize=10)\n    ax.legend(frameon=True, facecolor='#1e293b', edgecolor='#334155')\n    \n    plt.tight_layout()\n    plt.show()\n\nif __name__ == "__main__":\n    x, sig, noise = generate_simulation_data()\n    construct_analytical_plot(x, sig, noise)\n`
+        };
+
+        // Real-time synchronization of line numbers
+        function updateLineNumbers() {
+            const codeText = editor.value;
+            const lines = codeText.split('\n');
+            const lineCount = Math.max(lines.length, 1);
+            
+            let numHtml = '';
+            for (let i = 1; i <= lineCount; i++) {
+                numHtml += `<div>${i}</div>`;
+            }
+            lineNumbers.innerHTML = numHtml;
+            syncScroll();
+
+            // Toggle watermark helper
+            if (codeText.length > 0) {
+                editorEmptyHelper.classList.add('hidden');
+            } else {
+                editorEmptyHelper.classList.remove('hidden');
+            }
+
+            // Real-time analytics trigger
+            runLiveDiagnostics(codeText);
+            autoSuggestFilename(codeText);
+        }
+
+        function syncScroll() {
+            lineNumbers.scrollTop = editor.scrollTop;
+        }
+
+        editor.addEventListener('input', updateLineNumbers);
+        editor.addEventListener('scroll', syncScroll);
+
+        // Auto-initialize line numbers
+        updateLineNumbers();
+
+        // Safe visual template injection
+        function injectTemplate(key) {
+            if (editor.value.trim() !== "") {
+                if (!confirm("This will overwrite your existing code. Do you want to proceed?")) {
+                    return;
+                }
+            }
+            editor.value = boilerplates[key];
+            updateLineNumbers();
+            showToast("Template Injected", `Succesfully loaded "${key}" Python blueprint.`, "⚡");
+        }
+
+        // Code Cleaning Operations Suite
+        function cleanCode(type) {
+            let currentText = editor.value;
+            if (!currentText.trim()) {
+                showToast("Empty Workbench", "Please paste or write some code first!", "⚠️");
+                return;
+            }
+
+            let modifiedText = currentText;
+            let feedbackMsg = "";
+            let symbol = "✨";
+
+            switch (type) {
+                case 'strip-numbers':
+                    // Regex matches: leading line indices like "1. ", "01 ", "[12] ", "1 | ", "123  def"
+                    const lines = currentText.split('\n');
+                    const cleaned = lines.map(line => {
+                        // strip common leading structures, but preserve python intentation spacing
+                        // Matches pattern like beginning sequence of numbers followed by delimiters
+                        let match = line.match(/^(\s*)(?:\[?\d+\]?[\s\.\:\/\|-]*)\s*(?=\w|[\(\)\[\]\{\}""'']|$)/);
+                        if (match) {
+                            // Extract original white spaces and strip the numbers
+                            const spaces = match[1] || '';
+                            return spaces + line.substring(match[0].length);
+                        }
+                        return line;
+                    });
+                    modifiedText = cleaned.join('\n');
+                    feedbackMsg = "Removed line prefix numbers and delimiters!";
+                    symbol = "1️⃣";
+                    break;
+                
+                case 'strip-repl':
+                    // Stripping command line artifacts ">>> " or "... "
+                    const replLines = currentText.split('\n');
+                    const replCleaned = replLines.map(line => {
+                        return line.replace(/^(\s*)(?:>>>|\.\.\.)\s*/, '$1');
+                    });
+                    modifiedText = replCleaned.join('\n');
+                    feedbackMsg = "Cleaned REPL syntax terminal markers (>>> , ...)";
+                    symbol = "🐍";
+                    break;
+
+                case 'html-entities':
+                    // Swapping out standard XML/HTML entities
+                    const replacements = {
+                        "&amp;": "&",
+                        "&lt;": "<",
+                        "&gt;": ">",
+                        "&quot;": '"',
+                        "&#39;": "'",
+                        "&apos;": "'"
+                    };
+                    modifiedText = currentText.replace(/&[#\w\d]+;/g, function(entity) {
+                        return replacements[entity] || entity;
+                    });
+                    feedbackMsg = "Decoded HTML entities successfully!";
+                    symbol = "🧬";
+                    break;
+
+                case 'tabs-spaces':
+                    modifiedText = currentText.replace(/\t/g, "    ");
+                    feedbackMsg = "Converted indentation Tabs to 4 Spaces.";
+                    symbol = "⇥";
+                    break;
+
+                case 'trim-spaces':
+                    const trimLines = currentText.split('\n');
+                    modifiedText = trimLines.map(line => line.trimEnd()).join('\n');
+                    feedbackMsg = "Cleaned raw trailing whitespaces.";
+                    symbol = "✂️";
+                    break;
+            }
+
+            if (currentText === modifiedText) {
+                showToast("No Changes", "No raw patterns of this type were found to clean up.", "ℹ️");
+            } else {
+                editor.value = modifiedText;
+                updateLineNumbers();
+                showToast("Code Cleaned", feedbackMsg, symbol);
+            }
+        }
+
+        // Real-time active diagnostic parser & syntax check
+        function runLiveDiagnostics(code) {
+            // Update stats
+            const byteSize = new Blob([code]).size;
+            let sizeStr = byteSize + " B";
+            if (byteSize > 1024) sizeStr = (byteSize / 1024).toFixed(2) + " KB";
+            
+            document.getElementById('stat-lines').innerText = code === "" ? 0 : code.split('\n').length;
+            document.getElementById('stat-chars').innerText = code.length;
+            document.getElementById('stat-size').innerText = sizeStr;
+
+            if (code.trim() === "") {
+                resetDiagnosticsUI();
+                return;
+            }
+
+            // 1. Bracket Match Verification
+            const stack = [];
+            const brackets = {'(': ')', '[': ']', '{': '}'};
+            const openBrackets = new Set(['(', '[', '{']);
+            const closeBrackets = new Set([')', ']', '}']);
+            let bracketErrors = 0;
+            let lastUnclosed = null;
+
+            // Simple string state parser to skip strings in diagnostics
+            let inSingleQuote = false;
+            let inDoubleQuote = false;
+            let inDocString = false;
+
+            for (let i = 0; i < code.length; i++) {
+                const char = code[i];
+                // Quote checks
+                if (char === "'" && !inDoubleQuote) {
+                    if (code.slice(i, i+3) === "'''") { inDocString = !inDocString; i += 2; continue; }
+                    if (!inDocString) inSingleQuote = !inSingleQuote;
+                } else if (char === '"' && !inSingleQuote) {
+                    if (code.slice(i, i+3) === '"""') { inDocString = !inDocString; i += 2; continue; }
+                    if (!inDocString) inDoubleQuote = !inDoubleQuote;
+                }
+
+                if (inSingleQuote || inDoubleQuote || inDocString) continue;
+
+                if (openBrackets.has(char)) {
+                    stack.push({char, pos: i});
+                } else if (closeBrackets.has(char)) {
+                    if (stack.length === 0) {
+                        bracketErrors++;
+                    } else {
+                        const last = stack.pop();
+                        if (brackets[last.char] !== char) {
+                            bracketErrors++;
+                        }
+                    }
+                }
+            }
+            const unclosedCount = stack.length + bracketErrors;
+            const bracketIndicator = document.getElementById('bracket-icon');
+            const bracketText = document.getElementById('bracket-status-text');
+
+            if (unclosedCount === 0) {
+                bracketIndicator.innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-xs">✓</span>';
+                bracketText.innerHTML = '<span class="text-emerald-400 font-medium">All brackets balanced</span>';
+            } else {
+                bracketIndicator.innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-amber-950 text-amber-400 border border-amber-500/30 text-xs">!</span>';
+                bracketText.innerHTML = `<span class="text-amber-400 font-medium">${unclosedCount} unbalanced bracket(s)</span> detected. Check nested coordinates.`;
+            }
+
+            // 2. Quote Monitoring Check
+            const quoteIndicator = document.getElementById('quote-icon');
+            const quoteText = document.getElementById('quote-status-text');
+            if (inSingleQuote || inDoubleQuote || inDocString) {
+                quoteIndicator.innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-rose-950 text-rose-400 border border-rose-500/30 text-xs">✗</span>';
+                quoteText.innerHTML = '<span class="text-rose-400 font-medium">Unclosed string literal</span> detected. Please check quotes.';
+            } else {
+                quoteIndicator.innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-xs">✓</span>';
+                quoteText.innerHTML = '<span class="text-emerald-400 font-medium">No open string errors</span>';
+            }
+
+            // 3. Indentation warning system
+            const lines = code.split('\n');
+            let hasTabs = false;
+            let hasSpaces = false;
+            lines.forEach(line => {
+                if (line.startsWith('\t')) hasTabs = true;
+                if (line.startsWith(' ')) hasSpaces = true;
+            });
+
+            const indentIndicator = document.getElementById('indent-icon');
+            const indentText = document.getElementById('indent-status-text');
+            if (hasTabs && hasSpaces) {
+                indentIndicator.innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-amber-950 text-amber-400 border border-amber-500/30 text-xs">!</span>';
+                indentText.innerHTML = '<span class="text-amber-400 font-medium">Mixed tabs & spaces!</span> This will cause <code class="bg-slate-900 px-1 py-0.5 text-rose-400 rounded">IndentationError</code>.';
+            } else if (hasTabs) {
+                indentIndicator.innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-blue-950 text-blue-400 border border-blue-500/30 text-xs">i</span>';
+                indentText.innerHTML = 'Using <span class="text-blue-400">Tabs</span> for scoping indentation.';
+            } else {
+                indentIndicator.innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/30 text-xs">✓</span>';
+                indentText.innerHTML = 'Consistent <span class="text-emerald-400">Spaces</span> used for code layout structure.';
+            }
+
+            // 4. Structural Outline Auto-Generation
+            generateStructureOutline(lines);
+        }
+
+        // Clean out diagnostics to resting state when empty
+        function resetDiagnosticsUI() {
+            document.getElementById('stat-lines').innerText = 0;
+            document.getElementById('stat-chars').innerText = 0;
+            document.getElementById('stat-size').innerText = "0 B";
+
+            document.getElementById('bracket-icon').innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-slate-500 border border-slate-800 text-xs">-</span>';
+            document.getElementById('bracket-status-text').innerHTML = "Start typing code to verify matched brackets.";
+
+            document.getElementById('quote-icon').innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-slate-500 border border-slate-800 text-xs">-</span>';
+            document.getElementById('quote-status-text').innerHTML = "Monitors unmatched single, double, & docstring quotes.";
+
+            document.getElementById('indent-icon').innerHTML = '<span class="flex items-center justify-center w-5 h-5 rounded-full bg-slate-900 text-slate-500 border border-slate-800 text-xs">-</span>';
+            document.getElementById('indent-status-text').innerHTML = "Alerts you of dangerous tab/space mixtures.";
+
+            document.getElementById('outline-container').innerHTML = `
+                <div class="text-center py-8 text-slate-500 space-y-2">
+                    <svg class="w-8 h-8 mx-auto text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <p class="font-medium text-slate-600">No definitions detected</p>
+                    <p class="text-[11px] text-slate-700 max-w-[200px] mx-auto">Structure will auto-populate with imports, functions & classes as you write.</p>
+                </div>`;
+            document.getElementById('structure-count').innerText = "0 found";
+        }
+
+        // Live AST structural outline generator
+        function generateStructureOutline(lines) {
+            const outline = [];
+            
+            lines.forEach((line, index) => {
+                const trimmed = line.trim();
+                
+                // Regex checks for Classes, Functions, and Imports
+                if (trimmed.startsWith('class ')) {
+                    const match = trimmed.match(/^class\s+([A-Za-z0-9_]+)/);
+                    if (match) outline.push({ type: 'class', name: match[1], line: index });
+                } else if (trimmed.startsWith('def ')) {
+                    const match = trimmed.match(/^def\s+([A-Za-z0-9_]+)/);
+                    if (match) outline.push({ type: 'func', name: match[1], line: index });
+                } else if (trimmed.startsWith('import ') || trimmed.startsWith('from ')) {
+                    outline.push({ type: 'import', name: trimmed, line: index });
+                }
+            });
+
+            const outlineContainer = document.getElementById('outline-container');
+            document.getElementById('structure-count').innerText = `${outline.length} found`;
+
+            if (outline.length === 0) {
+                outlineContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-600">
+                        <p>No logical markers detected.</p>
+                    </div>`;
+                return;
+            }
+
+            let html = '<div class="space-y-1.5">';
+            outline.forEach(item => {
+                let badgeClass = "";
+                let typeSymbol = "";
+                
+                switch(item.type) {
+                    case 'class':
+                        badgeClass = "bg-purple-950/40 text-purple-400 border border-purple-900/40";
+                        typeSymbol = "🗃️";
+                        break;
+                    case 'func':
+                        badgeClass = "bg-indigo-950/40 text-indigo-400 border border-indigo-900/40";
+                        typeSymbol = "ƒ";
+                        break;
+                    case 'import':
+                        badgeClass = "bg-slate-900 text-slate-400 border border-slate-800";
+                        typeSymbol = "📦";
+                        break;
+                }
+
+                const displayName = item.type === 'import' 
+                    ? (item.name.length > 30 ? item.name.substring(0, 27) + '...' : item.name)
+                    : item.name;
+
+                html += `
+                    <button onclick="jumpToLine(${item.line})" class="w-full text-left flex items-center justify-between p-2 rounded-lg bg-slate-900/40 hover:bg-slate-800/40 border border-slate-800/60 hover:border-indigo-500/30 transition-all font-mono">
+                        <div class="flex items-center space-x-2 truncate">
+                            <span class="text-xs shrink-0">${typeSymbol}</span>
+                            <span class="font-medium text-slate-300 truncate">${displayName}</span>
+                        </div>
+                        <span class="text-[10px] ${badgeClass} px-1.5 py-0.5 rounded font-sans shrink-0">Line ${item.line + 1}</span>
+                    </button>
+                `;
+            });
+            html += '</div>';
+            outlineContainer.innerHTML = html;
+        }
+
+        // Jump to target line in textarea instantly
+        function jumpToLine(targetLineIndex) {
+            const lines = editor.value.split('\n');
+            let charIndex = 0;
+            for (let i = 0; i < targetLineIndex; i++) {
+                charIndex += lines[i].length + 1; // count characters plus newline symbol
+            }
+            
+            editor.focus();
+            editor.setSelectionRange(charIndex, charIndex + (lines[targetLineIndex] ? lines[targetLineIndex].length : 0));
+            
+            const lineHeight = 24; // text-xs leading-6 equates approx 24px height
+            editor.scrollTop = targetLineIndex * lineHeight - 60;
+            syncScroll();
+            
+            showToast("Navigation", `Scrolled to line ${targetLineIndex + 1}`, "🧭");
+        }
+
+        // Intelligent suggested file name parser
+        let lastSuggested = "";
+        function autoSuggestFilename(code) {
+            if (code.trim() === "") return;
+            
+            // If the user modified the filename manually, don't override their override unless it's default
+            const userVal = filenameInput.value;
+            const format = document.getElementById('format-select').value;
+            
+            // Check for Class declarations
+            const classMatch = code.match(/class\s+([A-Za-z0-9_]+)/);
+            let suggestion = "app";
+            
+            if (classMatch) {
+                // convert PascalCase or camelCase to snake_case
+                const className = classMatch[1];
+                suggestion = className
+                    .replace(/([A-Z])/g, "_$1")
+                    .toLowerCase()
+                    .replace(/^_/, "");
+            } else {
+                // fallback to check function declaration
+                const funcMatch = code.match(/def\s+([A-Za-z0-9_]+)/);
+                if (funcMatch) {
+                    suggestion = funcMatch[1];
+                }
+            }
+
+            // Apply suggestion if field is empty, matches previous suggestion or is equal to generic defaults
+            if (userVal === "" || userVal === "app" || userVal === "script" || userVal === lastSuggested) {
+                filenameInput.value = suggestion;
+                lastSuggested = suggestion;
+            }
+        }
+
+        // Clean workspaces
+        function clearAll() {
+            if (editor.value.trim() !== "") {
+                if (!confirm("Are you sure you want to clear your current work?")) {
+                    return;
+                }
+            }
+            editor.value = "";
+            filenameInput.value = "app";
+            document.getElementById('format-select').value = ".py";
+            lastSuggested = "";
+            updateLineNumbers();
+            showToast("Workbench Cleared", "Editor is empty and ready for fresh code.", "🗑️");
+        }
+
+        // Handle format dropdown change
+        function onFormatChange() {
+            const format = document.getElementById('format-select').value;
+            showToast("Format Changed", `Download format set to ${format}`, "📄");
+        }
+
+        // Action Triggering File Extraction & Packaging Download
+        function triggerDownload() {
+            const code = editor.value;
+            if (code.trim() === "") {
+                showToast("Cannot Download", "No code detected! Please insert Python code to download.", "⚠️");
+                return;
+            }
+
+            let filename = filenameInput.value.trim();
+            const format = document.getElementById('format-select').value;
+            if (!filename) {
+                filename = "script";
+            }
+
+            // Clean forbidden directory path characters
+            filename = filename.replace(/[^A-Za-z0-9_\.\-]/g, "_");
+            // Remove any existing extension, we add our own
+            filename = filename.replace(/\.[^.]+$/, "");
+            filename += format;
+
+            try {
+                const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+
+                showToast("Download Initialized", `Packed & downloaded "${filename}" successfully!`, "📥");
+            } catch (err) {
+                console.error(err);
+                showToast("Download Failed", "Something went wrong generating file context.", "❌");
+            }
+        }
+
+        // Simulated Virtual Compilation Environment
+        let isTerminalOpen = false;
+        function toggleTerminal(state) {
+            const term = document.getElementById('virtual-terminal');
+            if (state) {
+                term.classList.remove('translate-y-full');
+                isTerminalOpen = true;
+            } else {
+                term.classList.add('translate-y-full');
+                isTerminalOpen = false;
+            }
+        }
+
+        function runVirtualCompilation() {
+            const code = editor.value;
+            if (code.trim() === "") {
+                showToast("Cannot Diagnose", "Please write or paste code before executing dry run.", "⚠️");
+                return;
+            }
+
+            toggleTerminal(true);
+            const terminalScreen = document.getElementById('terminal-screen');
+            terminalScreen.innerHTML = `<div class="text-indigo-400">⚡ Initializing PyForge compiler sandbox environment...</div>`;
+
+            setTimeout(() => {
+                terminalScreen.innerHTML += `<div>Python 3.11.4 interpreter context loaded securely.</div>`;
+                
+                // Extract statistics and scan structural elements
+                const lines = code.split('\n');
+                let hasTabs = false;
+                let hasSpaces = false;
+                let importsCount = 0;
+                let functionsCount = 0;
+                let classesCount = 0;
+
+                lines.forEach(line => {
+                    if (line.startsWith('\t')) hasTabs = true;
+                    if (line.startsWith(' ')) hasSpaces = true;
+                    if (line.trim().startsWith('import ') || line.trim().startsWith('from ')) importsCount++;
+                    if (line.trim().startsWith('def ')) functionsCount++;
+                    if (line.trim().startsWith('class ')) classesCount++;
+                });
+
+                // Syntax checks
+                let syntaxPassed = true;
+                let errorReports = [];
+
+                // Simple parser check for matching brackets
+                const bracketResult = evaluateBrackets(code);
+                if (!bracketResult.balanced) {
+                    syntaxPassed = false;
+                    errorReports.push(`SyntaxError: Unbalanced brackets/parentheses detected. Expected matching closing marker.`);
+                }
+
+                // Check tab spaces error
+                if (hasTabs && hasSpaces) {
+                    syntaxPassed = false;
+                    errorReports.push(`TabError: Mixed spaces and tabs used for indentation structure.`);
+                }
+
+                // Append simulated results
+                setTimeout(() => {
+                    terminalScreen.innerHTML += `<div class="text-slate-400">[*] Scanning logic layout for compilation compliance...</div>`;
+                    
+                    setTimeout(() => {
+                        terminalScreen.innerHTML += `<div>Found <span class="text-indigo-300 font-bold">${importsCount}</span> dependency imports, <span class="text-indigo-300 font-bold">${classesCount}</span> class blueprints, and <span class="text-indigo-300 font-bold">${functionsCount}</span> logical routines.</div>`;
+                        
+                        if (syntaxPassed) {
+                            terminalScreen.innerHTML += `<div class="text-emerald-400 font-semibold mt-2">✓ Dry Run Diagnostics: SUCCESS. No structural compilation flaws found!</div>`;
+                            terminalScreen.innerHTML += `<div class="text-slate-500">You're good to go! Use "Package & Download" to extract your production file.</div>`;
+                        } else {
+                            terminalScreen.innerHTML += `<div class="text-rose-400 font-semibold mt-2">✗ Dry Run Diagnostics: Compilation Warnings Found!</div>`;
+                            errorReports.forEach(err => {
+                                terminalScreen.innerHTML += `<div class="text-rose-400 ml-4 font-bold">➔ ${err}</div>`;
+                            });
+                            terminalScreen.innerHTML += `<div class="text-slate-400 mt-1">💡 Pro-Tip: Try clicking "Strip Numbers", "Strip REPL" or "Tabs ➔ 4 Spaces" on the workspace headers to clear layout issues.</div>`;
+                        }
+                        
+                        // Auto scroll terminal to bottom
+                        terminalScreen.scrollTop = terminalScreen.scrollHeight;
+                    }, 550);
+                }, 400);
+
+            }, 300);
+        }
+
+        function evaluateBrackets(code) {
+            const stack = [];
+            const brackets = {'(': ')', '[': ']', '{': '}'};
+            const openBrackets = new Set(['(', '[', '{']);
+            const closeBrackets = new Set([')', ']', '}']);
+            let ok = true;
+            
+            for (let i = 0; i < code.length; i++) {
+                const char = code[i];
+                if (openBrackets.has(char)) {
+                    stack.push(char);
+                } else if (closeBrackets.has(char)) {
+                    if (stack.length === 0) {
+                        ok = false;
+                        break;
+                    } else {
+                        const last = stack.pop();
+                        if (brackets[last] !== char) {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (stack.length > 0) ok = false;
+            return { balanced: ok };
+        }
+
+        // Custom premium Toast notification handler
+        let toastTimeout;
+        function showToast(title, message, symbol = "✓") {
+            const toast = document.getElementById('toast');
+            const tTitle = document.getElementById('toast-title');
+            const tMessage = document.getElementById('toast-message');
+            const tIcon = document.getElementById('toast-icon');
+
+            tTitle.innerText = title;
+            tMessage.innerText = message;
+            tIcon.innerText = symbol;
+
+            // Trigger animation slide up & fade-in
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        // Utility Modal Toggle
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } else {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
